@@ -1,5 +1,10 @@
 # HeapMonitor
 
+[![JitPack](https://jitpack.io/v/ifahimkhan/HeapMonitor.svg)](https://jitpack.io/#ifahimkhan/HeapMonitor)
+[![CI](https://github.com/ifahimkhan/HeapMonitor/actions/workflows/ci.yml/badge.svg)](https://github.com/ifahimkhan/HeapMonitor/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![minSdk 23](https://img.shields.io/badge/minSdk-23-brightgreen)
+
 A drop-in Android library that floats a small draggable overlay over every screen of your app,
 showing live JVM heap, native heap and garbage-collector counters. Visible only in debuggable
 builds; a silent no-op in production.
