@@ -20,5 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "HeapGarbageCollectionLibrary"
-include(":app")
+include(":app", ":heapmonitor", ":heapmonitor-noop")
  

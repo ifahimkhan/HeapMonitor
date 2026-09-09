@@ -13,7 +13,7 @@
 - **Target users**: Android developers on any Jetpack Compose (or View) project who want live memory
   feedback without opening the profiler.
 - **Platform**: Android, minSdk 23 (library), 26 (sample app)
-- **Status**: Greenfield. Repo currently holds only the Android Studio template `:app`.
+- **Status**: 0.1.0 implemented (prompts 1-7 done); library, no-op artifact, sample app, tests, publishing config in place.
 
 ---
 
@@ -25,11 +25,12 @@
 - Async: kotlinx-coroutines 1.10.2, `StateFlow` for snapshot stream
 - Memory APIs: `Runtime.getRuntime()`, `android.os.Debug.getRuntimeStats()`, `ActivityManager.memoryClass`
 - Tests: JUnit 4, kotlinx-coroutines-test, Compose UI test (`ui-test-junit4`), AndroidJUnitRunner
-- Publishing: `maven-publish` + JitPack (`com.github.ifahimkhan:heapmonitor:<tag>`)
+- Publishing: `maven-publish` + JitPack (`com.github.ifahimkhan.HeapMonitor:heapmonitor:<tag>`)
 - No DI framework, no Hilt, no Room, no network. Zero non-AndroidX runtime deps.
 
 ### Version pins (do not bump without checking AAR min-AGP)
 - `core-ktx` **1.18.0**, `lifecycle` **2.10.0**, `activity-compose` **1.13.0** — 1.19 / 2.11 need AGP >= 9.1 and fail in `checkDebugAarMetadata`.
+- `espresso-core` **3.7.0** must be an explicit `androidTestImplementation` in `:heapmonitor`: Compose 1.7 pulls Espresso 3.5, which crashes on API 36 with `NoSuchMethodException: InputManager.getInstance`.
 
 ---
 
@@ -90,7 +91,7 @@ HeapGarbageCollectionLibrary/
 - **Gating is runtime, not compile-time**: `DebugGate` checks `ApplicationInfo.FLAG_DEBUGGABLE`. Release APK: `install()` returns immediately, nothing sampled, nothing drawn. Consumer may force via `HeapMonitorConfig(enabled = true/false)`.
 - **Zero-footprint option**: consumers can use `debugImplementation(heapmonitor)` + `releaseImplementation(heapmonitor-noop)` (LeakCanary pattern).
 - **Auto-install**: `HeapMonitorInstaller` ContentProvider (no androidx.startup dep). Opt-out: `<provider android:name="com.fahim.heapmonitor.install.HeapMonitorInstaller" tools:node="remove"/>` then call `HeapMonitor.install(app, config)` manually.
-- **Overlay attachment**: `OverlayAttacher` registers `ActivityLifecycleCallbacks`; on `onActivityResumed` adds one tagged `ComposeView` to `window.decorView` (a FrameLayout) if absent. Only for `ComponentActivity` (needs ViewTree owners). Works for Compose AND View-based screens.
+- **Overlay attachment**: `OverlayAttacher` registers `ActivityLifecycleCallbacks`; on `onActivityResumed` adds one tagged `ComposeView` to `window.decorView` (a FrameLayout) if absent. Only for `ComponentActivity` (needs ViewTree owners). Works for Compose AND View-based screens. ViewTree owners are set on the overlay view itself, and `initializeViewTreeOwners()` is re-run when the decor still carries a DESTROYED owner (Android reuses the decor on local relaunch / `recreate()`).
 - **Sampling only in foreground**: sampler starts when first activity starts, stops when last activity stops. Default interval 1000 ms on `Dispatchers.Default`.
 - **Overlay is draggable, compact by default**, expands on tap, has "Force GC" button (`Runtime.gc()`), respects `safeDrawing` insets, own dark palette (readable on any host theme).
 - **GC counters**: `Debug.getRuntimeStats()` keys `art.gc.gc-count`, `art.gc.gc-time`, `art.gc.blocking-gc-count`, `art.gc.blocking-gc-time`, `art.gc.bytes-allocated`, `art.gc.bytes-freed`. Missing/unparseable -> `0`, never crash.
@@ -162,13 +163,13 @@ enum class OverlayPosition { TopStart, TopEnd, BottomStart, BottomEnd }
 
 | # | File | Domain | Status | Depends on |
 |---|------|--------|--------|-----------|
-| 1 | `prompts/prompt_1_module_setup.md` | Build / module scaffold | [ ] pending | — |
-| 2 | `prompts/prompt_2_metrics_core.md` | Metrics core (sampler, model) | [ ] pending | 1 |
-| 3 | `prompts/prompt_3_overlay_ui.md` | Compose overlay UI | [ ] pending | 2 |
-| 4 | `prompts/prompt_4_integration_api.md` | Facade, gating, auto-attach | [ ] pending | 2, 3 |
-| 5 | `prompts/prompt_5_sample_app.md` | Sample app demo | [ ] pending | 4 |
-| 6 | `prompts/prompt_6_testing.md` | Unit + UI + instrumented tests | [ ] pending | 4 |
-| 7 | `prompts/prompt_7_publishing.md` | maven-publish, JitPack, README, noop | [ ] pending | 5, 6 |
+| 1 | `prompts/prompt_1_module_setup.md` | Build / module scaffold | [x] done | — |
+| 2 | `prompts/prompt_2_metrics_core.md` | Metrics core (sampler, model) | [x] done | 1 |
+| 3 | `prompts/prompt_3_overlay_ui.md` | Compose overlay UI | [x] done | 2 |
+| 4 | `prompts/prompt_4_integration_api.md` | Facade, gating, auto-attach | [x] done | 2, 3 |
+| 5 | `prompts/prompt_5_sample_app.md` | Sample app demo | [x] done | 4 |
+| 6 | `prompts/prompt_6_testing.md` | Unit + UI + instrumented tests | [x] done | 4 |
+| 7 | `prompts/prompt_7_publishing.md` | maven-publish, JitPack, README, noop | [x] done | 5, 6 |
 
 Mark `[x] done` as each completes.
 
@@ -179,3 +180,6 @@ Mark `[x] done` as each completes.
 | Date | Change | Prompt |
 |------|--------|--------|
 | 2026-09-09 | Initial architecture + prompt set | — |
+| 2026-09-09 | Module scaffold, core sampler + model, Compose overlay, facade + auto-attach, sample app | 1-5 |
+| 2026-09-09 | Unit + Compose UI + instrumented tests; Espresso 3.7.0 pinned for API 36; decor-owner refresh on relaunch | 6 |
+| 2026-09-09 | maven-publish, `:heapmonitor-noop`, jitpack.yml, CI workflow, README, CHANGELOG, LICENSE | 7 |
