@@ -67,10 +67,12 @@ object HeapMonitor {
         HeapLog.d("uninstalled")
     }
 
-    /** Runs `Runtime.gc()` and re-samples immediately. Safe when not installed. */
+    /**
+     * Runs `Runtime.gc()` on a background dispatcher, counts it as an explicit GC in the next
+     * [HeapSnapshot] and re-samples. Returns immediately; no-op when not installed.
+     */
     fun forceGc() {
-        runCatching { Runtime.getRuntime().gc() }
-        state?.sampler?.sampleNow()
+        state?.sampler?.forceGc()
     }
 
     /** Test seam: install with pre-built collaborators and no debug-gate check. */

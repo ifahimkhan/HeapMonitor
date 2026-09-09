@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Periodically reads a [HeapStatsSource] and publishes [HeapSnapshot]s on [snapshots].
@@ -27,6 +28,10 @@ internal class HeapSampler(
 ) {
     private val intervalMs: Long = intervalMs.coerceAtLeast(MIN_INTERVAL_MS)
     private val _snapshots = MutableStateFlow(HeapSnapshot.EMPTY)
+    private val explicitGcCount = AtomicLong(0L)
+
+    /** Long-lived scope for one-shot GC requests; independent of the start/stop sampling loop. */
+    private val gcScope = CoroutineScope(SupervisorJob() + dispatcher)
     private val lock = Any()
     private var scope: CoroutineScope? = null
     private var job: Job? = null
@@ -56,9 +61,24 @@ internal class HeapSampler(
         }
     }
 
-    /** Performs one synchronous read and emits it. Used after a forced GC. Never throws. */
+    /** Performs one synchronous read and emits it. Never throws. */
     fun sampleNow() {
         runCatching { _snapshots.value = buildSnapshot(source.read(), _snapshots.value) }
+    }
+
+    /**
+     * Runs [gc] on [dispatcher], never on the caller's thread, then counts it as an explicit GC and
+     * re-samples. Works whether or not the sampling loop is running.
+     *
+     * ART runs `Runtime.gc()` synchronously on the calling thread and flags it as a blocking
+     * collection, so calling it from the UI thread would freeze the app for the pause.
+     */
+    fun forceGc(gc: () -> Unit = ::runtimeGc) {
+        gcScope.launch {
+            runCatching(gc)
+            explicitGcCount.incrementAndGet()
+            sampleNow()
+        }
     }
 
     private suspend fun CoroutineScope.loop() {
@@ -70,7 +90,8 @@ internal class HeapSampler(
 
     private fun buildSnapshot(raw: RawHeapStats, previous: HeapSnapshot): HeapSnapshot {
         val gc = GcStatsParser.parse(raw.gcStats)
-        val delta = if (previous.timestampMs == 0L) 0L else (gc.gcCount - previous.gcCount).coerceAtLeast(0L)
+        val delta =
+            if (previous.timestampMs == 0L) 0L else (gc.gcCount - previous.gcCount).coerceAtLeast(0L)
         return HeapSnapshot(
             timestampMs = clock(),
             maxBytes = raw.maxBytes,
@@ -89,10 +110,13 @@ internal class HeapSampler(
             memoryClassMb = raw.memoryClassMb,
             largeMemoryClassMb = raw.largeMemoryClassMb,
             isLargeHeap = raw.isLargeHeap,
+            explicitGcCount = explicitGcCount.get(),
         )
     }
 
     companion object {
         const val MIN_INTERVAL_MS = 100L
+
+        private fun runtimeGc() = Runtime.getRuntime().gc()
     }
 }

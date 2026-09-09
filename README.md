@@ -12,10 +12,20 @@ builds; a silent no-op in production.
   (green, amber, red at configurable thresholds)
 - **Native heap** allocated and total size
 - **GC count** with a `(+n)` delta since the previous sample, **GC time**, **blocking GC count**
+  (with how many were forced by you) and **blocking GC time**
 - **Memory class** (normal and large) and whether `largeHeap` is enabled
-- A **Force GC** button that runs `Runtime.gc()` and re-samples immediately
+- A **Force GC** button that runs `Runtime.gc()` on a background thread and re-samples
 
 The collapsed chip reads like `84.0/200.0 MB · GC 17`; tap it to expand, drag it anywhere.
+
+### Reading "Blocking GC"
+
+ART reports `art.gc.blocking-gc-count` for every collection that an *app* thread started or waited
+on, as opposed to the concurrent collections run by its `HeapTaskDaemon`. It does **not** mean the
+collector was prevented from running. `Runtime.gc()` always runs synchronously on the calling thread,
+so every Force GC press adds one to this counter; the overlay shows that share as `(n forced)`, and
+`HeapSnapshot.naturalBlockingGcCount` gives you the rest. A rising natural count without any forced
+GCs means allocation pressure is stalling your threads. Blocking GC time is the summed pause.
 
 ## Install
 
@@ -35,11 +45,11 @@ Then pick one of the two integration styles in your app module:
 
 ```kotlin
 // simplest: runtime-gated, no-op in non-debuggable builds
-implementation("com.github.ifahimkhan.HeapMonitor:heapmonitor:v0.1.0")
+implementation("com.github.ifahimkhan.HeapMonitor:heapmonitor:v0.1.1")
 
 // zero-footprint release (LeakCanary style)
-debugImplementation("com.github.ifahimkhan.HeapMonitor:heapmonitor:v0.1.0")
-releaseImplementation("com.github.ifahimkhan.HeapMonitor:heapmonitor-noop:v0.1.0")
+debugImplementation("com.github.ifahimkhan.HeapMonitor:heapmonitor:v0.1.1")
+releaseImplementation("com.github.ifahimkhan.HeapMonitor:heapmonitor-noop:v0.1.1")
 ```
 
 ## Usage

@@ -26,6 +26,7 @@ internal data class MetricRow(val label: String, val value: String)
 
 internal fun metricRows(snapshot: HeapSnapshot): List<MetricRow> = with(snapshot) {
     val gcDelta = if (gcCountDelta > 0) " (+$gcCountDelta)" else ""
+    val forced = if (explicitGcCount > 0) " ($explicitGcCount forced)" else ""
     val largeHeap = if (isLargeHeap) " · largeHeap" else ""
     listOf(
         MetricRow("Heap max", ByteFormatter.format(maxBytes)),
@@ -38,7 +39,8 @@ internal fun metricRows(snapshot: HeapSnapshot): List<MetricRow> = with(snapshot
         MetricRow("Native size", ByteFormatter.format(nativeHeapSizeBytes)),
         MetricRow("GC count", "$gcCount$gcDelta"),
         MetricRow("GC time", "$gcTimeMs ms"),
-        MetricRow("Blocking GC", "$blockingGcCount"),
+        MetricRow("Blocking GC", "$blockingGcCount$forced"),
+        MetricRow("Blocking time", "$blockingGcTimeMs ms"),
         MetricRow("Memory class", "$memoryClassMb MB (large: $largeMemoryClassMb MB)$largeHeap"),
     )
 }

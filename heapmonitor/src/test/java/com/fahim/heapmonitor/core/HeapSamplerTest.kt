@@ -138,6 +138,51 @@ class HeapSamplerTest {
     }
 
     @Test
+    fun `forceGc runs gc on the dispatcher and records an explicit gc`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val (sampler, source) = sampler(listOf(rawStats(blockingGcCount = 3)), dispatcher)
+        var gcCalls = 0
+
+        sampler.forceGc { gcCalls++ }
+        assertEquals(0, gcCalls)
+        assertEquals(0, source.readCount)
+
+        runCurrent()
+        assertEquals(1, gcCalls)
+        assertEquals(1, source.readCount)
+        val s = sampler.snapshots.value
+        assertEquals(1L, s.explicitGcCount)
+        assertEquals(3L, s.blockingGcCount)
+        assertEquals(2L, s.naturalBlockingGcCount)
+    }
+
+    @Test
+    fun `explicit gc count accumulates across forceGc calls and survives stop`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val (sampler, _) = sampler(listOf(rawStats()), dispatcher)
+        sampler.start()
+        sampler.forceGc { }
+        sampler.forceGc { }
+        runCurrent()
+        assertEquals(2L, sampler.snapshots.value.explicitGcCount)
+
+        sampler.stop()
+        sampler.forceGc { }
+        runCurrent()
+        assertEquals(3L, sampler.snapshots.value.explicitGcCount)
+    }
+
+    @Test
+    fun `forceGc swallows a throwing gc and still samples`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val (sampler, source) = sampler(listOf(rawStats()), dispatcher)
+        sampler.forceGc { error("boom") }
+        runCurrent()
+        assertEquals(1, source.readCount)
+        assertEquals(1L, sampler.snapshots.value.explicitGcCount)
+    }
+
+    @Test
     fun `sampleNow emits synchronously without start`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val (sampler, source) = sampler(listOf(rawStats(gcCount = 3)), dispatcher)

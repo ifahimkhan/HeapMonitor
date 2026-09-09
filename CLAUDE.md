@@ -183,3 +183,4 @@ Mark `[x] done` as each completes.
 | 2026-09-09 | Module scaffold, core sampler + model, Compose overlay, facade + auto-attach, sample app | 1-5 |
 | 2026-09-09 | Unit + Compose UI + instrumented tests; Espresso 3.7.0 pinned for API 36; decor-owner refresh on relaunch | 6 |
 | 2026-09-09 | maven-publish, `:heapmonitor-noop`, jitpack.yml, CI workflow, README, CHANGELOG, LICENSE | 7 |
+| 2026-09-09 | Pushed to GitHub as `main`, tagged v0.1.0, JitPack group `com.github.ifahimkhan.HeapMonitor`; forceGc off UI thread, `explicitGcCount` + blocking-time rows (0.1.1) | — |

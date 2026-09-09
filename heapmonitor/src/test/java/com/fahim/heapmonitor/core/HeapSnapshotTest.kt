@@ -51,6 +51,18 @@ class HeapSnapshotTest {
     }
 
     @Test
+    fun `natural blocking count subtracts explicit GCs`() {
+        val s = HeapSnapshot.EMPTY.copy(blockingGcCount = 5L, explicitGcCount = 2L)
+        assertEquals(3L, s.naturalBlockingGcCount)
+    }
+
+    @Test
+    fun `natural blocking count never negative`() {
+        val s = HeapSnapshot.EMPTY.copy(blockingGcCount = 1L, explicitGcCount = 4L)
+        assertEquals(0L, s.naturalBlockingGcCount)
+    }
+
+    @Test
     fun `EMPTY is all zeros`() {
         val e = HeapSnapshot.EMPTY
         assertEquals(0L, e.timestampMs)

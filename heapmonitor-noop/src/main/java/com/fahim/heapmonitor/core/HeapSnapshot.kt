@@ -24,6 +24,11 @@ data class HeapSnapshot(
     val memoryClassMb: Int,
     val largeMemoryClassMb: Int,
     val isLargeHeap: Boolean,
+    /**
+     * Number of `Runtime.gc()` calls made through `HeapMonitor.forceGc()`. Each one is also
+     * counted in [blockingGcCount] because ART treats explicit GCs as blocking.
+     */
+    val explicitGcCount: Long = 0L,
 ) {
     /** Bytes currently in use inside the VM-allocated heap. */
     val usedBytes: Long get() = totalBytes - freeBytes
@@ -34,6 +39,9 @@ data class HeapSnapshot(
     /** Used heap as a percentage of [maxBytes], clamped to 0..100; 0 when max is unknown. */
     val usedPercent: Int
         get() = if (maxBytes <= 0L) 0 else (usedBytes * 100L / maxBytes).toInt().coerceIn(0, 100)
+
+    /** Blocking GCs not caused by Force GC: [blockingGcCount] minus [explicitGcCount], min 0. */
+    val naturalBlockingGcCount: Long get() = (blockingGcCount - explicitGcCount).coerceAtLeast(0L)
 
     companion object {
         /** Snapshot emitted before the first real sample. */
@@ -55,6 +63,7 @@ data class HeapSnapshot(
             memoryClassMb = 0,
             largeMemoryClassMb = 0,
             isLargeHeap = false,
+            explicitGcCount = 0L,
         )
     }
 }

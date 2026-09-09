@@ -9,6 +9,8 @@ import com.fahim.heapmonitor.install.LifecycleRegistrar
 import com.fahim.heapmonitor.install.OverlayAttacher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -36,11 +38,14 @@ class HeapMonitorFacadeTest {
         }
     }
 
-    private fun installFake(gcCount: Long = 5L): Pair<HeapSampler, FakeRegistrar> {
+    private fun installFake(
+        gcCount: Long = 5L,
+        dispatcher: TestDispatcher = StandardTestDispatcher(),
+    ): Pair<HeapSampler, FakeRegistrar> {
         val sampler = HeapSampler(
             source = FakeHeapStatsSource(listOf(rawStats(gcCount = gcCount))),
             intervalMs = 1_000L,
-            dispatcher = StandardTestDispatcher(),
+            dispatcher = dispatcher,
         )
         val config = HeapMonitorConfig(enabled = true)
         val registrar = FakeRegistrar()
@@ -89,10 +94,15 @@ class HeapMonitorFacadeTest {
     }
 
     @Test
-    fun `forceGc samples immediately when installed`() {
-        installFake(gcCount = 42L)
+    fun `forceGc runs off the caller thread then samples`() = runTest {
+        installFake(gcCount = 42L, dispatcher = StandardTestDispatcher(testScheduler))
         HeapMonitor.forceGc()
-        assertEquals(42L, HeapMonitor.snapshots.value.gcCount)
+        assertEquals(HeapSnapshot.EMPTY, HeapMonitor.snapshots.value)
+
+        runCurrent()
+        val s = HeapMonitor.snapshots.value
+        assertEquals(42L, s.gcCount)
+        assertEquals(1L, s.explicitGcCount)
     }
 
     @Test
